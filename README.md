@@ -32,11 +32,6 @@ AWS_REGION=eu-west-2 terraform plan
 You don't need to pass any variables if you never intend to ssh to the EC2 instance. Otherwise you can set variable `key_pair` to an already provisioned key pair. The only thing you need to do is set you AWS region so the VPN is setup in the correct region/country.
 You can pass these on the command line using multiple args; eg `-var foo=bar`.
 
-Variables:
-* password - openvpn password. Default: generated string.
-* username - openvpn username. Default `openvpn`.
-* key_pair - ec2 keypair to use. Default: no key pair (cannot ssh to the instance).
-
 # Getting the ovpn client configuration
 
 This is stored as a Systems Manager Parameter, which is then presented as a terraform output. Thus you can either cut and paste it from SM Parameter Store or get it from the outputs. The terraform sets the value to an initial value ("Not populated yet."), which is then properly populated by the userdata of the ec2 instance; you will probably need to do a `terraform refresh` to get its updated value.

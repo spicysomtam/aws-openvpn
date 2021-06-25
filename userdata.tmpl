@@ -48,7 +48,6 @@ EOF
 
 # Write to ssm param store, so we can retrieve it via terraform (and we have a place where it is stored).
 [ -e /root/${region}.ovpn ] && {
-  echo "" >> /root/${region}.ovpn # Add newline
   aws ssm put-parameter --name "${ssm_param}" --value "`cat /root/${region}.ovpn`" --type String --overwrite
 }
 
