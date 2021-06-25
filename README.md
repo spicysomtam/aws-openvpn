@@ -8,6 +8,8 @@ Also unlike other terraform deploys, this uses purely open source Openvpn. No re
 
 This is ultimatly designed to run as a Jenkins pipeline so I can spin up a VPN whenever I want, and then tear it down when done, thus not consuming the AWS Free Tier resources. It takes about a minute to deploy, so if fired from a Jenkins job thats pretty reasonable.
 
+This was designed to be a backup to my home OpenVPN server, which may become unavailable. Thus the need to be able to spin up an alternative at short notice.
+
 This was developed with terraform 0.15/1.0.
 
 Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his install script that make the OpenVPN install and client setup a breeze.
