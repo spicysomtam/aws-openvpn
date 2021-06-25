@@ -10,6 +10,8 @@ This is ultimatly designed to run as a Jenkins pipeline so I can spin up a VPN w
 
 This was developed with terraform 0.15/1.0.
 
+Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his install script that make the OpenVPN install and client setup a breeze.
+
 # AWS Region
 
 Thus the context defines the aws region. Also its kind of messy to include region code in your terraform when you can just define it in the context; often a pitfall of someone new to aws. Here is how to manage your context and multiple aws accounts:
