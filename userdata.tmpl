@@ -1,0 +1,55 @@
+#! /bin/bash
+
+# Note: terraform will attempt to replace $ variables with variables passed to this.
+# Thus don't use shell $ variables!
+
+DEBIAN_FRONTEND=noninteractive apt update && apt -y install zip unzip python3 python3-venv python-is-python3 curl
+
+cd /var/tmp
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+unzip awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+rm -rf awscli-bundle
+rm -f awscli-bundle.zip
+
+export AWS_REGION=`curl --silent http://169.254.169.254/latest/meta-data/placement/region`
+export AWS_DEFAULT_REGION=`curl --silent http://169.254.169.254/latest/meta-data/placement/region`
+
+curl -O https://raw.githubusercontent.com/Angristan/openvpn-install/master/${script}
+chmod +x ${script}
+
+# Options (menu driven):
+# internal ip
+# external ip
+# ip6 support?
+# port to listen on (1=default=1194)
+# udp/tcp
+# dns setting
+# compression
+# customise encryption
+# press to continue
+# first profile name
+# password or no-password (1=no-passwd)
+
+# We can get internal and external ip's via these urls on ec2 instances
+./${script} << EOF
+`curl -s http://169.254.169.254/latest/meta-data/local-ipv4`
+`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`
+n
+1
+1
+11
+n
+n
+
+${region}
+1
+EOF
+
+# Write to ssm param store, so we can retrieve it via terraform (and we have a place where it is stored).
+[ -e /root/${region}.ovpn ] && {
+  echo "" >> /root/${region}.ovpn # Add newline
+  aws ssm put-parameter --name "${ssm_param}" --value "`cat /root/${region}.ovpn`" --type String --overwrite
+}
+
+rm -f ${script}
