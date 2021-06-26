@@ -13,7 +13,7 @@ provider "aws" {
 data "aws_region" "current" {}
 
 locals {
-  location = lower(replace(element(split("(",data.aws_region.current.description),1),")",""))
+  location = lower(replace(replace(replace(element(split("(",data.aws_region.current.description),1),")",""),".","")," ","-"))
   ssm_param = "/openvpn/client-ovpn/${local.location}.ovpn"
 }
 

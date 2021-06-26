@@ -150,7 +150,7 @@ fa4a8eb045cd64d9da87d7aa0ffb4dcf
 
 # Using the ovpn client configuration
 
-My understanding is the OpenVPN client config file is of type `.ovpn` (well it been called that since I setup my home OpenVPN server many years back). Thus you simple cut and paste the output of the terraform output to a file (or direct it output if using Linux). Then install it on an Openvpn client (I do this on Andriod and it works fine). For the example above I would call the file `london.ovpn`.
+My understanding is the OpenVPN client config file is of type `.ovpn` (well it been called that since I setup my home OpenVPN server many years back). Thus you simple cut and paste the output of the terraform output to a file (or direct it's output if using Linux). Then install it on an Openvpn client (I do this on Andriod and it works fine). For the example above I would call the file `london.ovpn`.
 
 I mainly used Linux Mint (Debian based) and network manager, so will describe this setup:
 * Click on the network icon on your task bar.
@@ -164,3 +164,7 @@ I mainly used Linux Mint (Debian based) and network manager, so will describe th
 * Then click on the network icon again and select your vpn connection you just added. The network icon will change to a padlock.
 * Open a web browser and Google whatsmyip. Check you location is correct.
 
+# Possible improvements
+
+* You could generate multiple client ovpns (eg `london-0.ovpn` etc).
+* Improve the process of getting the ovpn config (any suggestions?).
