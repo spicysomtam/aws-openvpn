@@ -8,7 +8,7 @@ This was designed to be a backup to my home OpenVPN server, which may become una
 
 This was developed with terraform 0.15/1.0.
 
-Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his install script that makes the OpenVPN install and client setup easy.
+Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his OpenVPN install script that makes the install and client setup easy.
 
 # Deploying. destroying, AWS Region, etc
 
