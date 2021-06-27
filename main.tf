@@ -15,7 +15,7 @@ data "aws_region" "current" {}
 locals {
   location = lower(replace(replace(replace(element(split("(",data.aws_region.current.description),1),")",""),".","")," ","-"))
   ovpn_file = "${local.location}.ovpn"
-  ssm_param = "/openvpn/client-ovpn/${local.ovpn_file}"
+  ssm_param = "/openvpn/clients/${local.ovpn_file}"
 }
 
 data "aws_ami" "ubuntu" {

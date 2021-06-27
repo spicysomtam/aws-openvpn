@@ -279,7 +279,7 @@ Terraform will perform the following actions:
       + data_type = (known after apply)
       + id        = (known after apply)
       + key_id    = (known after apply)
-      + name      = "/openvpn/client-ovpn/london.ovpn"
+      + name      = "/openvpn/clients/london.ovpn"
       + tags_all  = (known after apply)
       + tier      = "Standard"
       + type      = "String"
@@ -291,7 +291,7 @@ Plan: 7 to add, 0 to change, 0 to destroy.
 
 Changes to Outputs:
   + ovpn_file                = "london.ovpn"
-  + ovpn_ssm_parameter_name  = "/openvpn/client-ovpn/london.ovpn"
+  + ovpn_ssm_parameter_name  = "/openvpn/clients/london.ovpn"
   + ovpn_ssm_parameter_value = (sensitive value)
   + public_ip                = (known after apply)
 aws_iam_role.ovpn: Creating...
@@ -299,7 +299,7 @@ aws_iam_policy.ovpn: Creating...
 aws_ssm_parameter.ovpn: Creating...
 aws_security_group.ovpn: Creating...
 aws_iam_policy.ovpn: Creation complete after 4s [id=arn:aws:iam::578696731580:policy/openvpn]
-aws_ssm_parameter.ovpn: Creation complete after 5s [id=/openvpn/client-ovpn/london.ovpn]
+aws_ssm_parameter.ovpn: Creation complete after 5s [id=/openvpn/clients/london.ovpn]
 aws_iam_role.ovpn: Creation complete after 5s [id=openvpn]
 aws_iam_role_policy_attachment.ovpn: Creating...
 aws_iam_instance_profile.ovpn: Creating...
@@ -318,7 +318,7 @@ Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 Outputs:
 
 ovpn_file = "london.ovpn"
-ovpn_ssm_parameter_name = "/openvpn/client-ovpn/london.ovpn"
+ovpn_ssm_parameter_name = "/openvpn/clients/london.ovpn"
 ovpn_ssm_parameter_value = <sensitive>
 public_ip = "3.10.205.244"
 Waiting for ovpn client config to be created...
