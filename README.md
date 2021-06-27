@@ -1,22 +1,18 @@
 # Using Terraform to deploy OpenVPN on AWS
 
-Idea behind this is to create an almost free vpn in any aws region. Typically you would sign up for a free AWS account, and use the free `t2.micro` instance and 15Gb monthly transfer limit.
+Idea is to create a free vpn in any aws region. Typically you would sign up for a free AWS account, and use the free `t2.micro` instance and 15Gb monthly transfer limit. The aws free accounts last 12 months so when it expires, sign up for another and close the old one!
 
-Unlike other terraform based deploys this does everything for you, including generating the client ovpn file. You don't even need an Elastic IP (which will add to the cost).
+Unlike other terraform based deploys this does everything for you, including generating the client `.ovpn` file. You don't even need an Elastic IP (which will add to the cost).  Also this uses open source Openvpn rather than the AS or other commercial solutions. No resources are waisted on a web gui frontend (eg with the AS OpenVPN deploys) so you get more resources for the vpn on your low resource `t2.micro` instance.
 
-Also unlike other terraform deploys, this uses purely open source Openvpn. No resources are waisted on a web gui frontend so you get more resources for the vpn on your low resource `t2.micro` instance.
-
-This is ultimatly designed to run as a Jenkins pipeline so I can spin up a VPN whenever I want, and then tear it down when done, thus not consuming the AWS Free Tier resources. It takes about a minute to deploy, so if fired from a Jenkins job thats pretty reasonable.
-
-This was designed to be a backup to my home OpenVPN server, which may become unavailable. Thus the need to be able to spin up an alternative at short notice.
+This was designed to be a backup to my home OpenVPN server, which may become unavailable. Thus the need to be able to spin up an alternative at short notice and tear it down when not using it. You could also shut down the ec2 instance to save compute hours. It takes about a minute to deploy or destroy.
 
 This was developed with terraform 0.15/1.0.
 
-Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his install script that make the OpenVPN install and client setup a breeze.
+Credit to [angristan/openvpn-install](https://github.com/angristan/openvpn-install) for his install script that makes the OpenVPN install and client setup easy.
 
-# AWS Region
+# Deploying. destroying, AWS Region, etc
 
-Thus the context defines the aws region. Also its kind of messy to include region code in your terraform when you can just define it in the context; often a pitfall of someone new to aws. Here is how to manage your context and multiple aws accounts:
+The context defines the aws region, credentials, etc; see [offical aws docs](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) for this. Also its kind of messy to include region and credentials code in your terraform when you can just define it in the context; often a pitfall for those new to aws. Here is how to manage your context and multiple aws accounts (assuming Linux):
 ```
 $ env|grep AWS
 AWS_PROFILE=aws7-admin1
@@ -24,147 +20,346 @@ AWS_DEFAULT_REGION=eu-west-1
 AWS_REGION=eu-west-1
 ```
 
-It can also be done this way overriding your env vars:
+## Deploying
+
+I suggest you use the supplied script `apply-generate-ovpn.sh`; this will do the following:
+* Use terraform workspaces if the `AWS_REGION` env var is specified (see example) so you can deploy multiple vpn's into different regions.
+* Perform `terraform apply` with `auto-approve` (no confirmation).
+* Wait for the client ovpn to appear in the AWS Systems Manager parameter store.
+* Generate the `.ovpn` file for you, ready to load into your vpn client.
+
+Here is an example run:
 ```
-AWS_REGION=eu-west-2 terraform plan
-```
+$ AWS_REGION=eu-west-2 ./apply-generate-ovpn.sh 
+Setting terraform workspace to eu-west-2...
+Switched to workspace "eu-west-2".
+Performing terraform apply...
 
-# Terraform variables
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
 
-You don't need to pass any variables if you never intend to ssh to the EC2 instance. Otherwise you can set variable `key_pair` to an already provisioned key pair. The only thing you need to do is set you AWS region so the VPN is setup in the correct region/country.
-You can pass these on the command line using multiple args; eg `-var foo=bar`.
+Terraform will perform the following actions:
 
-# Getting the ovpn client configuration
+  # aws_iam_instance_profile.ovpn will be created
+  + resource "aws_iam_instance_profile" "ovpn" {
+      + arn         = (known after apply)
+      + create_date = (known after apply)
+      + id          = (known after apply)
+      + name        = "openvpn"
+      + path        = "/"
+      + role        = "openvpn"
+      + tags_all    = (known after apply)
+      + unique_id   = (known after apply)
+    }
 
-This is stored as a Systems Manager Parameter, which is then presented as a terraform output. Thus you can either cut and paste it from SM Parameter Store or get it from the outputs. The terraform sets the value to an initial value ("Not populated yet."), which is then properly populated by the userdata of the ec2 instance; you will probably need to do a `terraform refresh` to get its updated value.
+  # aws_iam_policy.ovpn will be created
+  + resource "aws_iam_policy" "ovpn" {
+      + arn       = (known after apply)
+      + id        = (known after apply)
+      + name      = "openvpn"
+      + path      = "/"
+      + policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = [
+                          + "ssm:PutParameter",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = [
+                          + "*",
+                        ]
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + policy_id = (known after apply)
+      + tags_all  = (known after apply)
+    }
 
-The terraform output is hidden by default if you do a `terraform output`; instead you need to explictly specify the variable; eg `terraform output ovpn_ssm_parameter_value`.
+  # aws_iam_role.ovpn will be created
+  + resource "aws_iam_role" "ovpn" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "ec2.amazonaws.com"
+                        }
+                      + Sid       = ""
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "openvpn"
+      + path                  = "/"
+      + tags_all              = (known after apply)
+      + unique_id             = (known after apply)
 
-```
-$ AWS_REGION=eu-west-2 terraform output
-ovpn_ssm_parameter_name = "/openvpn/client-ovpn/london.ovpn"
-ovpn_ssm_parameter_value = <sensitive>
-public_ip = "18.134.6.172"
-```
+      + inline_policy {
+          + name   = (known after apply)
+          + policy = (known after apply)
+        }
+    }
 
-Example of the `terraform refresh`:
-```
-$ AWS_REGION=eu-west-2 terraform output ovpn_ssm_parameter_value
-"Not populated yet."
+  # aws_iam_role_policy_attachment.ovpn will be created
+  + resource "aws_iam_role_policy_attachment" "ovpn" {
+      + id         = (known after apply)
+      + policy_arn = (known after apply)
+      + role       = "openvpn"
+    }
 
-$ AWS_REGION=eu-west-2 terraform refresh
-aws_iam_policy.ovpn: Refreshing state... [id=arn:aws:iam::578696731580:policy/openvpn]
-aws_iam_role.ovpn: Refreshing state... [id=openvpn]
-aws_security_group.ovpn: Refreshing state... [id=sg-053e1f90bae98c0c2]
-aws_ssm_parameter.ovpn: Refreshing state... [id=/openvpn/client-ovpn/london.ovpn]
-aws_iam_role_policy_attachment.ovpn: Refreshing state... [id=openvpn-20210625115623943900000001]
-aws_iam_instance_profile.ovpn: Refreshing state... [id=openvpn]
-aws_instance.ovpn: Refreshing state... [id=i-057c7a33922762569]
+  # aws_instance.ovpn will be created
+  + resource "aws_instance" "ovpn" {
+      + ami                                  = "ami-093d303510c432519"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + iam_instance_profile                 = "openvpn"
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t2.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + subnet_id                            = (known after apply)
+      + tags                                 = {
+          + "Name" = "openvpn"
+        }
+      + tags_all                             = {
+          + "Name" = "openvpn"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = "4db7916ef4c426d4947acd0101d9616858a254c5"
+      + vpc_security_group_ids               = (known after apply)
+
+      + capacity_reservation_specification {
+          + capacity_reservation_preference = (known after apply)
+
+          + capacity_reservation_target {
+              + capacity_reservation_id = (known after apply)
+            }
+        }
+
+      + ebs_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + snapshot_id           = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+
+      + enclave_options {
+          + enabled = (known after apply)
+        }
+
+      + ephemeral_block_device {
+          + device_name  = (known after apply)
+          + no_device    = (known after apply)
+          + virtual_name = (known after apply)
+        }
+
+      + metadata_options {
+          + http_endpoint               = (known after apply)
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = (known after apply)
+        }
+
+      + network_interface {
+          + delete_on_termination = (known after apply)
+          + device_index          = (known after apply)
+          + network_interface_id  = (known after apply)
+        }
+
+      + root_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+    }
+
+  # aws_security_group.ovpn will be created
+  + resource "aws_security_group" "ovpn" {
+      + arn                    = (known after apply)
+      + description            = "OpenVPN security group"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 1194
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "udp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 1194
+            },
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 22
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 22
+            },
+        ]
+      + name                   = "openvpn"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = (known after apply)
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_ssm_parameter.ovpn will be created
+  + resource "aws_ssm_parameter" "ovpn" {
+      + arn       = (known after apply)
+      + data_type = (known after apply)
+      + id        = (known after apply)
+      + key_id    = (known after apply)
+      + name      = "/openvpn/client-ovpn/london.ovpn"
+      + tags_all  = (known after apply)
+      + tier      = "Standard"
+      + type      = "String"
+      + value     = (sensitive value)
+      + version   = (known after apply)
+    }
+
+Plan: 7 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + ovpn_file                = "london.ovpn"
+  + ovpn_ssm_parameter_name  = "/openvpn/client-ovpn/london.ovpn"
+  + ovpn_ssm_parameter_value = (sensitive value)
+  + public_ip                = (known after apply)
+aws_iam_role.ovpn: Creating...
+aws_iam_policy.ovpn: Creating...
+aws_ssm_parameter.ovpn: Creating...
+aws_security_group.ovpn: Creating...
+aws_iam_policy.ovpn: Creation complete after 4s [id=arn:aws:iam::578696731580:policy/openvpn]
+aws_ssm_parameter.ovpn: Creation complete after 5s [id=/openvpn/client-ovpn/london.ovpn]
+aws_iam_role.ovpn: Creation complete after 5s [id=openvpn]
+aws_iam_role_policy_attachment.ovpn: Creating...
+aws_iam_instance_profile.ovpn: Creating...
+aws_iam_role_policy_attachment.ovpn: Creation complete after 3s [id=openvpn-20210627081023612600000001]
+aws_security_group.ovpn: Creation complete after 8s [id=sg-0703553365916606b]
+aws_iam_instance_profile.ovpn: Creation complete after 4s [id=openvpn]
+aws_instance.ovpn: Creating...
+aws_instance.ovpn: Still creating... [10s elapsed]
+aws_instance.ovpn: Still creating... [20s elapsed]
+aws_instance.ovpn: Still creating... [30s elapsed]
+aws_instance.ovpn: Still creating... [40s elapsed]
+aws_instance.ovpn: Creation complete after 47s [id=i-0a3d6e2c78a39639e]
+
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 
 Outputs:
 
+ovpn_file = "london.ovpn"
 ovpn_ssm_parameter_name = "/openvpn/client-ovpn/london.ovpn"
 ovpn_ssm_parameter_value = <sensitive>
-public_ip = "18.134.6.172"
+public_ip = "3.10.205.244"
+Waiting for ovpn client config to be created...
+Refreshing terraform outputs...
+Refreshing terraform outputs...
+Refreshing terraform outputs...
+Refreshing terraform outputs...
+Refreshing terraform outputs...
+OpenVPN client config has been written to file "london.ovpn". Use this with your vpn client.
+```
 
-$ AWS_REGION=eu-west-2 terraform output -raw ovpn_ssm_parameter_value
-client
-proto udp
-explicit-exit-notify
-remote 18.134.6.172 1194
-dev tun
-resolv-retry infinite
-nobind
-persist-key
-persist-tun
-remote-cert-tls server
-verify-x509-name server_D20H0JrIEKod6e0s name
-auth SHA256
-auth-nocache
-cipher AES-128-GCM
-tls-client
-tls-version-min 1.2
-tls-cipher TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
-ignore-unknown-option block-outside-dns
-setenv opt block-outside-dns # Prevent Windows 10 DNS leak
-verb 3
-<ca>
------BEGIN CERTIFICATE-----
-MIIB1zCCAX2gAwIBAgIUH4OIDOyZgBodQlgXL3gkjuhApW8wCgYIKoZIzj0EAwIw
-HjEcMBoGA1UEAwwTY25fTlV2eUFMUThjZlJEOXgxTTAeFw0yMTA2MjUxMTU5MDZa
-Fw0zMTA2MjMxMTU5MDZaMB4xHDAaBgNVBAMME2NuX05VdnlBTFE4Y2ZSRDl4MU0w
-WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATGlf+YYX1T06jSHePhDQQ2V/yk+Wqk
-9RPQEu8wd/UK8l55tIhYKzFg9rbcaJx2XERA1XUNUmNUv2z7/TXXdnfno4GYMIGV
-MB0GA1UdDgQWBBQivuhango2O7eGyUnthj3wQrCMqjBZBgNVHSMEUjBQgBQivuha
-ngo2O7eGyUnthj3wQrCMqqEipCAwHjEcMBoGA1UEAwwTY25fTlV2eUFMUThjZlJE
-OXgxTYIUH4OIDOyZgBodQlgXL3gkjuhApW8wDAYDVR0TBAUwAwEB/zALBgNVHQ8E
-BAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgW7NARvz74qiI5yVgiohyP8I85bUjohOw
-AWv0rHgYo4ACIQDJojKxwM5MKxLgjDVY5kDvGN+Xfh/WvWwM3i2pYvw1rw==
------END CERTIFICATE-----
-</ca>
-<cert>
------BEGIN CERTIFICATE-----
-MIIB2jCCAX+gAwIBAgIRAJAk2Mq/Spd1KgdkPs0WncgwCgYIKoZIzj0EAwIwHjEc
-MBoGA1UEAwwTY25fTlV2eUFMUThjZlJEOXgxTTAeFw0yMTA2MjUxMTU5MDhaFw0y
-MzA5MjgxMTU5MDhaMBExDzANBgNVBAMMBmxvbmRvbjBZMBMGByqGSM49AgEGCCqG
-SM49AwEHA0IABAj/JDRetg4Q2TeWDtlXceYuBCyMdLOquS/NXm2Hnou28nyBzMyc
-IvJjkpZ4TgBwEETjSPByYPh2duE1CPp4CHujgaowgacwCQYDVR0TBAIwADAdBgNV
-HQ4EFgQU3T0u8G8Feorl3xLznMWvDlvdGH4wWQYDVR0jBFIwUIAUIr7oWp4KNju3
-hslJ7YY98EKwjKqhIqQgMB4xHDAaBgNVBAMME2NuX05VdnlBTFE4Y2ZSRDl4MU2C
-FB+DiAzsmYAaHUJYFy94JI7oQKVvMBMGA1UdJQQMMAoGCCsGAQUFBwMCMAsGA1Ud
-DwQEAwIHgDAKBggqhkjOPQQDAgNJADBGAiEA93UAx47LC0FuxmLIkPbZ6qCBtC3T
-xQ78Ap9nF6dURG0CIQDvEK4zvoql9k07ZKL/hYcnYDXnblWm/3O6xR1epIaA9A==
------END CERTIFICATE-----
-</cert>
-<key>
------BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgFTHUfj3q98Peo+/S
-c3J30u7kIrHbu4JMplS0Z9XAaQGhRANCAAQI/yQ0XrYOENk3lg7ZV3HmLgQsjHSz
-qrkvzV5th56LtvJ8gczMnCLyY5KWeE4AcBBE40jwcmD4dnbhNQj6eAh7
------END PRIVATE KEY-----
-</key>
-<tls-crypt>
-#
-# 2048 bit OpenVPN static key
-#
------BEGIN OpenVPN Static key V1-----
-3ca790efbe0f87c04c88f265fc54ffb0
-a21bb8640de856c7e66b9f871e73939e
-f2097238d9c879f788791e4d6101dc50
-5800e9877147862baaa26e64c49cb4a5
-ee0f76256251a10802f926f9daf91cb0
-6e67acc968608f708b2e813278126a0b
-f41d478e962f104a0ceb56fb84ef7a59
-668801920d750ec31c13b80752394b62
-dcc3aa10db1fe0099c0011e3521b2216
-fa4a8eb045cd64d9da87d7aa0ffb4dcf
-90a061ca7eca18e7b76494b544a53944
-317a5b8b3a33b18ac8e806ba4e91f2a5
-55e2eba316d61e1ce456e6f072a11c8d
-832b1bc7034cf5dae84bafcb9ae85b68
-2ed1a7e19c01ce0857a48933b263c3d5
-2ebeabbda627deb6a22f13bedd4ab7a0
------END OpenVPN Static key V1-----
-</tls-crypt>
+If you wish to ssh to the ec2 instance and debug the setup you can deploy the terraform manually with an existing key pair:
+```
+AWS_REGION=eu-west-2 terraform apply -auto-approve -var key_pair=aws7-london
+```
+
+## Destroying
+
+Make sure you are disconnected from the vpn first!!!
+
+To destroy the deploy example in the last section:
+```
+AWS_REGION=eu-west-2 terraform destroy -auto-approve
 ```
 
 # Using the ovpn client configuration
 
-My understanding is the OpenVPN client config file is of type `.ovpn` (well it been called that since I setup my home OpenVPN server many years back). Thus you simple cut and paste the output of the terraform output to a file (or direct it's output if using Linux). Then install it on an Openvpn client (I do this on Andriod and it works fine). For the example above I would call the file `london.ovpn`.
+My understanding is the OpenVPN client config file type is `.ovpn` (well it been called that since I setup my home OpenVPN server many years back). Thus you simply install the `.ovpn` file generated by the `apply-generate-ovpn.sh` script into your vpn client (I do this on Andriod and Linux and it works fine). For the example above the file generated is `london.ovpn`.
 
 I mainly used Linux Mint (Debian based) and network manager, so will describe this setup:
 * Click on the network icon on your task bar.
-* Select Network connections on the bottom.
-* Click on + at the bottom LH of the pop up box.
-* Scroll through the Connection Types until you come across Import a saved VPN connection... Click on that.
-* Click om Create.
-* Browse and Open your .ovpn file.
+* Select `Network connections` on the bottom.
+* Click on `+` at the bottom LH of the pop up box.
+* Scroll through the `Connection Types` until you come across `Import a saved VPN connection`. Click on `Create`.
+* Browse and select your `.ovpn` file and click on `Open`.
 * Edit the connect as required.
-* Click on Save.
+* Click on `Save`.
 * Then click on the network icon again and select your vpn connection you just added. The network icon will change to a padlock.
-* Open a web browser and Google whatsmyip. Check you location is correct.
+* Open a web browser and Google `whatsmyip`. Choose one of the links that show you where the IP is located in the world. 
+* Check you location is correct.
 
 # Possible improvements
 
-* You could generate multiple client ovpns (eg `london-0.ovpn` etc).
-* Improve the process of getting the ovpn config (any suggestions?).
+* You could generate multiple client `.ovpn` files per region (eg `london-0.ovpn` etc). This would involve running the userdata script `openvpn-install.sh` multiple times for clients > 1, and then setting up multiple Systems Manager parameters. For my needs I just need the single ovpn file. If you decide to do this, raise a PR so I can merge it in.
