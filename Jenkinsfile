@@ -9,6 +9,7 @@ pipeline {
   parameters {
     choice (name: 'action', choices: 'create\ndestroy', description: 'Create or destroy the region vpn.')
     string (name: 'region', defaultValue : 'eu-west-2', description: 'AWS region to create/destroy vpn.')
+    string(name: 'credential', defaultValue : 'jenkins', description: "Jenkins credential that provides the AWS access key and secret.")
   }
 
   agent { label 'master' }
@@ -33,10 +34,15 @@ pipeline {
       }
       steps {
         script {
-          sh """
-            terraform init
-            AWS_REGION=${params.region} ./apply-generate-ovpn.sh display-ovpn
-          """
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+          credentialsId: params.credential, 
+          accessKeyVariable: 'AWS_ACCESS_KEY_ID',  
+          secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+            sh """
+              terraform init
+              AWS_REGION=${params.region} ./apply-generate-ovpn.sh display-ovpn
+            """
+          }
         }
       }
     }
@@ -47,7 +53,12 @@ pipeline {
       }
       steps {
         script {
-          sh "AWS_REGION=${params.region} terraform workspace select $AWS_REGION && terraform destroy -auto-approve"
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+          credentialsId: params.credential, 
+          accessKeyVariable: 'AWS_ACCESS_KEY_ID',  
+          secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+            sh "AWS_REGION=${params.region} terraform workspace select $AWS_REGION && terraform destroy -auto-approve"
+          }
         }
       }
     }
