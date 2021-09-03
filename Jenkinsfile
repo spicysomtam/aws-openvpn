@@ -33,8 +33,10 @@ pipeline {
       }
       steps {
         script {
-          sh "AWS_REGION=${params.region} ./apply-generate-ovpn.sh display-ovpn"
-
+          sh """
+            terraform init
+            AWS_REGION=${params.region} ./apply-generate-ovpn.sh display-ovpn
+          """
         }
       }
     }
