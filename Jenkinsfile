@@ -45,9 +45,7 @@ pipeline {
       }
       steps {
         script {
-          sh """
-            export AWS_REGION=${params.region}
-            terraform workspace select $AWS_REGION && terraform destroy -auto-approve
+          sh "AWS_REGION=${params.region} terraform workspace select $AWS_REGION && terraform destroy -auto-approve"
         }
       }
     }
