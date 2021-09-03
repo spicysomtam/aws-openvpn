@@ -23,7 +23,7 @@ pipeline {
       steps {
         script {
           cluster = params.cluster
-          currentBuild.displayName = '#' + env.BUILD_NUMBER + ' ' + params.action + params.region
+          currentBuild.displayName = '#' + env.BUILD_NUMBER + ' ' + params.action + ' vpn '+ `params.region
        }
       }
     }
