@@ -30,6 +30,7 @@ do
       echo "Ovpn file (\"${of}\"); use this with your client:"
       echo "==============================================================================================================================="
       terraform output -raw $p
+      echo ""
       echo "==============================================================================================================================="
     else
       echo "OpenVPN client config has been written to file \"${of}\". Use this with your vpn client."

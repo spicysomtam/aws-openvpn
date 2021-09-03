@@ -368,7 +368,9 @@ The state is held in the Jenkins workspace.
 
 You can run it multiple times for different regions, and terraform uses workspaces for the different regions.
 
-You have the option to specify the region, create/destroy and jenkins aws credential as parameters.
+You have the option to specify create/destroy, the region and jenkins aws credential as parameters.
+
+The ovpn client config will be displayed on the Job console output; cut and paste this into you Openvpn client.
 
 You should add `terraform` as a Tool in Jenkins and label it as the `terraform` version. Some instructions [here](
 ) (or Google for better instructions if these are insufficient).
