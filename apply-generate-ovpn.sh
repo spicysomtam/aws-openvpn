@@ -27,8 +27,10 @@ do
     of=$(terraform output -raw ovpn_file)
     if [ $1 = "display-ovpn" ]
     then
-      echo "ovpn file; use this with your client:"
+      echo "Ovpn file (\"${of}\"); use this with your client:"
+      echo "==============================================================================================================================="
       terraform output -raw $p
+      echo "==============================================================================================================================="
     else
       echo "OpenVPN client config has been written to file \"${of}\". Use this with your vpn client."
       terraform output -raw $p > $of
