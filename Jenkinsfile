@@ -57,7 +57,10 @@ pipeline {
           credentialsId: params.credential, 
           accessKeyVariable: 'AWS_ACCESS_KEY_ID',  
           secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-            sh "AWS_REGION=${params.region} terraform workspace select ${params.region} && terraform destroy -auto-approve"
+            sh """
+              export AWS_REGION=${params.region}
+              terraform workspace select ${params.region} && terraform destroy -auto-approve
+            """
           }
         }
       }
