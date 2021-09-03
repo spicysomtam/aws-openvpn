@@ -360,6 +360,17 @@ I mainly used Linux Mint (Debian based) and network manager, so will describe th
 * Open a web browser and Google `whatsmyip`. Choose one of the links that show you where the IP is located in the world. 
 * Check you location is correct.
 
+# Jankins pipeline
+
+I have provided a Jenkins pipeline that you can use in your Jenkins to deploy/destroy the vpn.
+
+The state is held in the Jenkins workspace.
+
+You can run it multiple times for different regions, and terraform uses workspaces for the different regions.
+
+You should add `terraform` as a Tool in Jenkins and label it as the `terraform` version. Some instructions [here](
+) (or Google for better instructions if these are insufficient).
+
 # Possible improvements
 
 * You could generate multiple client `.ovpn` files per region (eg `london-0.ovpn` etc). This would involve running the userdata script `openvpn-install.sh` multiple times for clients > 1, and then setting up multiple Systems Manager parameters. For my needs I just need the single ovpn file. If you decide to do this, raise a PR so I can merge it in.

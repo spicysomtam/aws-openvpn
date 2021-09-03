@@ -25,8 +25,14 @@ do
     terraform refresh > /dev/null
   else
     of=$(terraform output -raw ovpn_file)
-    echo "OpenVPN client config has been written to file \"${of}\". Use this with your vpn client."
-    terraform output -raw $p > $of
+    if [ $1 = "display-ovpn" ]
+    then
+      echo "ovpn file; use this with your client:"
+      terraform output -raw $p
+    else
+      echo "OpenVPN client config has been written to file \"${of}\". Use this with your vpn client."
+      terraform output -raw $p > $of
+    fi
     f=1
     break
   fi
