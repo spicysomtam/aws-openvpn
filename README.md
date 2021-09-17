@@ -360,7 +360,7 @@ I mainly used Linux Mint (Debian based) and network manager, so will describe th
 * Open a web browser and Google `whatsmyip`. Choose one of the links that show you where the IP is located in the world. 
 * Check you location is correct.
 
-# Jankins pipeline
+# Jenkins pipeline
 
 I have provided a Jenkins pipeline that you can use in your Jenkins to deploy/destroy the vpn.
 
